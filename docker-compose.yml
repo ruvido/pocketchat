@@ -1,0 +1,11 @@
+services:
+  pocketbase:
+    build: .
+    container_name: pocketbase
+    restart: unless-stopped
+    ports:
+      - "9990:9990"
+    volumes:
+      - ./pb_data:/app/pb_data  # Optional: Persist data between container restarts
+      - ./pb_public:/app/pb_public
+    command: ["serve", "--http=0.0.0.0:9990"]
