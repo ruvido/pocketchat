@@ -5,11 +5,11 @@ To launch the chat locally
 
     docker compose up
 
-To modify the chat, look into
+To modify the chat, edit
 
-    index.html
+    pb_public/index.html
 
-### urgent
+### next steps
 - search
 - reply
 - link
