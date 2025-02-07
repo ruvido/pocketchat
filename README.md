@@ -1,6 +1,14 @@
 # pocketChat
 ## Roadmap della app del Branco
 
+To launch the chat locally
+
+    docker compose up
+
+To modify the chat, look into
+
+    index.html
+
 ### urgent
 - search
 - reply
