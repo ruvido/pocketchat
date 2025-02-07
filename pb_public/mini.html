@@ -1,104 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
     <style>
-        :root { --max-width: 600px; }
-        * { box-sizing: border-box; }
-        body { 
-            margin: 0; 
-            font-family: system-ui;
+        :root {
+            --primary: #007bff;
+            --background: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
             height: 100vh;
+            font-family: system-ui;
             display: flex;
             flex-direction: column;
         }
+
+        /* Auth */
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+            padding: 2rem;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        /* Chat */
+        #chat-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+        }
+
         #messages {
             flex: 1;
-            overflow-y: auto;
             padding: 1rem;
-            padding-bottom: 70px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
+
         .message {
-            margin-bottom: 1rem;
             max-width: 70%;
-            padding: 0.8rem;
-            border-radius: 1rem;
-            background: #e0e0e0;
+            padding: 12px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
         .own-message {
-            margin-left: auto;
-            background: #007bff;
+            align-self: flex-end;
+            background: var(--primary);
             color: white;
         }
+
         #input-container {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            max-width: var(--max-width);
-            background: white;
             padding: 1rem;
+            background: white;
             display: flex;
-            gap: 0.5rem;
+            gap: 1rem;
+            border-top: 1px solid #ddd;
         }
+
         #message-input {
             flex: 1;
-            padding: 0.8rem;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 1.5rem;
-        }
-        button {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 1.5rem;
-            background: #007bff;
-            color: white;
+            border-radius: 24px;
         }
     </style>
 </head>
 <body>
-    <div id="messages"></div>
-    <div id="input-container">
-        <input type="text" id="message-input" placeholder="Type message...">
-        <button onclick="sendMessage()">Send</button>
+    <!-- Authentication -->
+    <div class="auth-container" id="auth-container">
+        <input type="email" class="auth-input" id="email" placeholder="Email">
+        <input type="password" class="auth-input" id="password" placeholder="Password">
+        <button class="auth-input" style="background: var(--primary); color: white" onclick="login()">Login</button>
+        <p style="text-align: center; margin-top: 1rem">
+            No account? <a href="#" onclick="showSignup()">Create one</a>
+        </p>
     </div>
 
-    <script src="https://unpkg.com/pocketbase@0.25.0/dist/pocketbase.umd.js"></script>
-    <script>
-        const pb = new PocketBase('http://127.0.0.1:8090');
-        let currentUser = prompt('Enter your name') || 'Anonymous';
+    <!-- Chat -->
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button style="background: var(--primary); color: white; padding: 12px 24px; border-radius: 24px" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
 
-        // Real-time subscription
-        pb.collection('messages').subscribe('*', function (e) {
-            addMessageToUI(e.record);
-        });
+<script src="https://unpkg.com/pocketbase@0.25.0/dist/pocketbase.umd.js"></script>
+<script>
+    // Initialize PocketBase without hardcoded URL
+    const pb = new PocketBase();
 
-        // Load existing messages
-        pb.collection('messages').getList(1, 50, {
+    // Auth functions
+    async function login() {
+        try {
+            await pb.collection('users').authWithPassword(
+                document.getElementById('email').value,
+                document.getElementById('password').value
+            );
+            initChat();
+        } catch (error) {
+            alert('Login failed: ' + error.message);
+        }
+    }
+
+    // Chat functions
+    async function initChat() {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('chat-container').style.display = 'flex';
+
+        // Load messages
+        const messages = await pb.collection('messages').getFullList({
             sort: '-created',
-        }).then(res => {
-            res.items.reverse().forEach(addMessageToUI);
+            expand: 'user'
         });
 
-        function sendMessage() {
-            const input = document.getElementById('message-input');
-            pb.collection('messages').create({
-                user: currentUser,
+        const messagesContainer = document.getElementById('messages');
+        messages.reverse().forEach(msg => {
+            messagesContainer.innerHTML += createMessageElement(msg);
+        });
+
+        // Real-time updates
+        pb.collection('messages').subscribe('*', async (e) => {
+            const msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
+            messagesContainer.innerHTML += createMessageElement(msg);
+        });
+    }
+
+    function createMessageElement(msg) {
+        const isOwn = msg.expand.user.id === pb.authStore.model.id;
+        return `
+            <div class="message ${isOwn ? 'own-message' : ''}">
+                <strong>${msg.expand.user.username}</strong>
+                <p>${msg.message}</p>
+                <small>${new Date(msg.created).toLocaleTimeString()}</small>
+            </div>
+        `;
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('message-input');
+        if (input.value.trim()) {
+            await pb.collection('messages').create({
+                user: pb.authStore.model.id,
                 message: input.value
             });
             input.value = '';
         }
+    }
 
-        function addMessageToUI(message) {
-            const div = document.createElement('div');
-            div.className = `message ${message.user === currentUser ? 'own-message' : ''}`;
-            div.innerHTML = `
-                <strong>${message.user}</strong>
-                <p>${message.message}</p>
-                <small>${new Date(message.created).toLocaleTimeString()}</small>
-            `;
-            document.getElementById('messages').appendChild(div);
-            window.scrollTo(0, document.body.scrollHeight);
-        }
-    </script>
+    // Initial check
+    if (pb.authStore.isValid) {
+        initChat();
+    }
+</script>
 </body>
 </html>

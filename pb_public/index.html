@@ -1,317 +1,369 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Chat</title>
     <style>
         :root {
-            --primary-color: #007bff;
-            --danger-color: #dc3545;
+            --primary: #007bff;
+            --danger: #dc3545;
+            --background: #f0f2f5;
+            --message-bg: #ffffff;
+            --own-message-bg: #d9fdd3;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
             height: 100vh;
             font-family: system-ui;
+            background: var(--background);
             display: flex;
             flex-direction: column;
         }
-        
-        /* Auth */
+
+        /* Auth Forms */
         .auth-form {
-            padding: 2rem;
+            width: 100%;
             max-width: 400px;
+            padding: 2rem;
             margin: auto;
         }
-        .auth-form input, .auth-form button {
+
+        .auth-form input,
+        .auth-form button {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px;
             margin: 8px 0;
             border-radius: 8px;
             border: 1px solid #ddd;
         }
-        .auth-form button { border: none; }
-        
-        /* Chat */
-        #chat-container { 
+
+        .auth-form button.primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        /* Chat Container */
+        #chat-container {
             flex: 1;
             display: none;
-            position: relative;
+            flex-direction: column;
         }
-        #messages {
-            padding: 60px 15px 80px;
-            overflow-y: auto;
-            height: calc(100vh - 60px);
-        }
-        .message {
-            margin: 10px 0;
-            max-width: 70%;
-            padding: 12px 15px;
-            border-radius: 15px;
-            background: #e0e0e0;
-        }
-        .own-message {
-            margin-left: auto;
-            background: var(--primary-color);
-            color: white;
-        }
-        #input-container {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            padding: 15px;
+
+        .chat-header {
+            padding: 1rem;
             background: white;
             display: flex;
-            gap: 10px;
+            gap: 1rem;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+        }
+
+        /* Messages */
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+            align-self: flex-start;
+        }
+
+        .message.own {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ddd;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .message-content {
+            background: var(--message-bg);
+            padding: 12px;
+            border-radius: 12px;
+            max-width: 600px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .message.own .message-content {
+            background: var(--own-message-bg);
+        }
+
+        .message-info {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        /* Input Area */
+        #input-container {
+            padding: 1rem;
+            background: white;
+            display: flex;
+            gap: 1rem;
             border-top: 1px solid #ddd;
         }
-        #message {
+
+        #message-input {
             flex: 1;
-            padding: 12px 15px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 25px;
-            resize: none;
+            border-radius: 24px;
             min-height: 50px;
             max-height: 150px;
-            font-family: inherit;
+            resize: none;
         }
-        button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-        }
-        .primary { background: var(--primary-color); color: white; }
-        .danger { background: var(--danger-color); color: white; }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <!-- Auth -->
+    <!-- Auth Forms -->
     <div id="login-container" class="auth-form">
         <h2>Login</h2>
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
         <button class="primary" onclick="login()">Login</button>
-        <!-- p style="margin-top:1rem">No account? <button class="danger" onclick="showSignup()">Signup</button></p-->
-        <p style="margin-top:1rem">Non hai ancora un account? <span onclick="showSignup()"><b>Iscriviti</b></span></p>
+        <p class="auth-switch">Non hai un account? <span onclick="showSignup()"><b>Registrati</b></span></p>
     </div>
 
-    <!-- Signup  -->
     <div id="signup-container" class="auth-form" style="display: none;">
-        <h2>Iscrizione</h2>
+        <h2>Registrazione</h2>
         <input type="text" id="signup-username" placeholder="Username">
         <input type="email" id="signup-email" placeholder="Email">
         <input type="password" id="signup-password" placeholder="Password">
-        <input type="password" id="signup-password-confirm" placeholder="Confirm Password">
-        <button class="primary" onclick="signup()">Iscriviti</button>
-        <p style="margin-top:1rem">Hai già un account? <span onclick="showLogin()"><b>Accedi</b></span></p>
-    </div >
+        <input type="password" id="signup-password-confirm" placeholder="Conferma Password">
+        <button class="primary" onclick="signup()">Registrati</button>
+        <p class="auth-switch">Hai già un account? <span onclick="showLogin()"><b>Accedi</b></span></p>
+    </div>
 
-    <!-- Chat -->
+    <!-- Chat Interface -->
     <div id="chat-container">
-        <div style="position:fixed;top:0;width:100%;padding:15px;background:var(--primary-color);color:white;display:flex;justify-content:space-between">
-            <span>User: <span id="username"></span></span>
+        <div class="chat-header">
+            <input type="text" id="search-input" placeholder="Cerca messaggi...">
             <button class="danger" onclick="logout()">Logout</button>
         </div>
         <div id="messages"></div>
         <div id="input-container">
-            <textarea 
-                id="message" 
-                placeholder="Message..." 
-                onkeydown="handleKeydown(event)"
-                rows="1"
-            ></textarea>
-            <button class="primary" onclick="sendMessage()">Send</button>
+            <textarea id="message-input" placeholder="Scrivi un messaggio..."></textarea>
+            <button class="primary" onclick="sendMessage()">Invia</button>
         </div>
     </div>
 
-    <script src="https://unpkg.com/pocketbase@0.25.0/dist/pocketbase.umd.js"></script>
-    <script>
-        //const pb = new PocketBase('http://127.0.0.1:8090');
-        const pb = new PocketBase();
-        let unsubscribe;
+<script src="https://unpkg.com/pocketbase@0.25.0/dist/pocketbase.umd.js"></script>
+<script>
+    const pb = new PocketBase();
+    let unsubscribe = null;
+    let lastRead = null;
 
-        // Auth
-        async function login() {
-            try {
-                await pb.collection('users').authWithPassword(
-                    document.getElementById('email').value,
-                    document.getElementById('password').value
-                );
-                localStorage.setItem('pb_auth', pb.authStore.exportToCookie());
-                initChat();
-            } catch(err) {
-                alert('Login failed: ' + err.message);
-            }
+    // Auth Functions
+    async function login() {
+        try {
+            await pb.collection('users').authWithPassword(
+                document.getElementById('email').value,
+                document.getElementById('password').value
+            );
+            initChat();
+        } catch (error) {
+            alert('Login failed: ' + error.message);
+        }
+    }
+
+    async function signup() {
+        const username = document.getElementById('signup-username').value.trim();
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const passwordConfirm = document.getElementById('signup-password-confirm').value;
+
+        if (password !== passwordConfirm) {
+            return alert('Le password non corrispondono!');
         }
 
-        // Function to create a new user account in the PocketBase "users" collection
-        async function signup() {
-            // Get values from the signup form
-            const username = document.getElementById('signup-username').value.trim();
-            const email = document.getElementById('signup-email').value.trim();
-            const password = document.getElementById('signup-password').value;
-            const passwordConfirm = document.getElementById('signup-password-confirm').value;
-
-            // Basic validations
-            if (!username || !email || !password || !passwordConfirm) {
-                return alert("Please fill in all fields.");
-            }
-
-            if (password !== passwordConfirm) {
-                return alert("Passwords do not match.");
-            }
-
-            try {
-                // Create a new user record in the "users" collection in PocketBase
-                await pb.collection('users').create({
-                    username: username,
-                    email: email,
-                    password: password,
-                    passwordConfirm: passwordConfirm
-                });
-                alert("Signup successful! Please login.");
-                // After successful signup, switch back to the login view
-                showLogin();
-            } catch (err) {
-                alert("Signup failed: " + err.message);
-            }
+        try {
+            await pb.collection('users').create({
+                username,
+                email,
+                password,
+                passwordConfirm,
+                emailVisibility: true
+            });
+            alert('Registrazione completata! Effettua il login.');
+            showLogin();
+        } catch (error) {
+            alert('Registrazione fallita: ' + error.message);
         }
+    }
 
-        function logout() {
-            pb.authStore.clear();
-            localStorage.removeItem('pb_auth');
-            //    if(unsubscribe) unsubscribe();
+    function logout() {
+        pb.authStore.clear();
+        document.getElementById('chat-container').style.display = 'none';
+        document.getElementById('login-container').style.display = 'block';
+    }
 
-            // Show login and hide chat
-            document.getElementById('chat-container').style.display = 'none';
-            document.getElementById('login-container').style.display = 'block';
+    // Chat Functions
+    async function initChat() {
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('signup-container').style.display = 'none';
+        document.getElementById('chat-container').style.display = 'flex';
 
-            // Clear form fields
-            document.getElementById('email').value = '';
-            document.getElementById('password').value = '';
-        }
+        // Load messages
+        const messages = await pb.collection('messages').getFullList({
+            sort: '-created',
+            expand: 'user'
+        });
 
+        const messagesContainer = document.getElementById('messages');
+        messages.reverse().forEach(msg => addMessage(msg));
+        scrollToBottom(true);
 
-        // Chat
-        async function initChat() {
-            document.getElementById('login-container').style.display = 'none';
-            document.getElementById('chat-container').style.display = 'block';
-            document.getElementById('username').textContent = pb.authStore.model.username;
+        // Real-time updates
+        unsubscribe = pb.collection('messages').subscribe('*', async (e) => {
+            const msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
+            addMessage(msg);
+            scrollToBottom();
+        });
 
-            // Load messages
-            const { items } = await pb.collection('messages').getList(1, 50, {
-                sort: '-created',
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', async (e) => {
+            const searchTerm = e.target.value;
+            const results = await pb.collection('messages').getFullList({
+                filter: `message ~ "${searchTerm}"`,
                 expand: 'user'
             });
             
-            const messages = document.getElementById('messages');
-            messages.innerHTML = '';
-            items.reverse().forEach(msg => addMessage(msg));
-            scrollToBottom(true);
-
-            // Realtime
-            unsubscribe = pb.collection('messages').subscribe('*', async e => {
-                const msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
-                addMessage(msg);
-                scrollToBottom();
-            });
-        }
-
-        function addMessage(msg) {
-            const div = document.createElement('div');
-            div.className = `message ${msg.expand.user.id === pb.authStore.model.id ? 'own-message' : ''}`;
-            div.innerHTML = `
-                <strong>${msg.expand.user.username}</strong>
-                <p>${msg.message.replace(/\n/g, '<br>')}</p>
-                <small>${new Date(msg.created).toLocaleTimeString()}</small>
-            `;
-            document.getElementById('messages').appendChild(div);
-        }
-
-        function handleKeydown(e) {
-            if(e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        }
-
-        async function sendMessage() {
-            const textarea = document.getElementById('message');
-            const message = textarea.value.trim();
-            
-            if(message) {
-                await pb.collection('messages').create({
-                    user: pb.authStore.model.id,
-                    message: message
-                });
-                textarea.value = '';
-                textarea.style.height = 'auto'; // Reset height
-            }
-        }
-
-        function scrollToBottom(instant = false) {
-            const messages = document.getElementById('messages');
-            messages.scrollTo({
-                top: messages.scrollHeight,
-                behavior: instant ? 'auto' : 'smooth'
-            });
-        }
-
-        // Auto-resize textarea
-        document.getElementById('message').addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
+            messagesContainer.innerHTML = '';
+            results.reverse().forEach(msg => addMessage(msg));
         });
+    }
 
-    // This will trigger the login function when "Enter" is pressed in the email or password fields.
-    document.getElementById('email').addEventListener('keydown', function(e) {
-      if(e.key === 'Enter') {
-        e.preventDefault();
-        login();
-      }
-    });
+    function addMessage(msg) {
+        const isOwn = msg.expand.user.id === pb.authStore.model.id;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+        messageDiv.innerHTML = `
+            <div class="message-avatar">${getInitials(msg.expand.user.username)}</div>
+            <div class="message-content">
+                <div>${linkify(msg.message)}</div>
+                <div class="message-info">
+                    <span>${msg.expand.user.username}</span>
+                    <span>${formatDate(msg.created)}</span>
+                </div>
+                <div class="message-actions">
+                    ${canEdit(msg) ? `<button onclick="editMessage('${msg.id}')">✏️</button>` : ''}
+                    ${canDelete(msg) ? `<button onclick="deleteMessage('${msg.id}')">🗑️</button>` : ''}
+                </div>
+            </div>
+        `;
+        document.getElementById('messages').appendChild(messageDiv);
+    }
 
-    document.getElementById('password').addEventListener('keydown', function(e) {
-      if(e.key === 'Enter') {
-        e.preventDefault();
-        login();
-      }
-    });
-
-
-document.getElementById('signup-container').addEventListener('submit', function(e) {
-  e.preventDefault(); // Prevent the default form submission behavior
-  signup();           // Call your signup function
-});
-
-function showSignup() {
-  // Hide the login container
-  document.getElementById('login-container').style.display = 'none';
-  // Show the signup container
-  document.getElementById('signup-container').style.display = 'block';
-}
-
-// Function to show the login form (and hide the signup form)
-function showLogin() {
-  document.getElementById('signup-container').style.display = 'none';
-  document.getElementById('login-container').style.display = 'block';
-}
-
-        // Init
-        if(localStorage.getItem('pb_auth')) {
-            pb.authStore.loadFromCookie(localStorage.getItem('pb_auth'));
-            if(pb.authStore.isValid) {
-                initChat();
-            } else {
-                document.getElementById('login-container').style.display = 'block';
-            }
-        } else {
-            document.getElementById('login-container').style.display = 'block';
+    async function sendMessage() {
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        
+        if (message) {
+            await pb.collection('messages').create({
+                user: pb.authStore.model.id,
+                message
+            });
+            input.value = '';
         }
-//        if(localStorage.getItem('pb_auth')) {
-//            pb.authStore.loadFromCookie(localStorage.getItem('pb_auth'));
-//            initChat();
-//        }
-    </script>
+    }
+
+    // Helpers
+    function getInitials(username) {
+        return username.split(' ').map(n => n[0]).join('').toUpperCase();
+    }
+
+    function formatDate(dateString) {
+        try {
+            return new Date(dateString).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: 'short'
+            });
+        } catch {
+            return '';
+        }
+    }
+
+    function linkify(text) {
+        return text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+    }
+
+    function scrollToBottom(instant = false) {
+        const messages = document.getElementById('messages');
+        messages.scrollTo({
+            top: messages.scrollHeight,
+            behavior: instant ? 'auto' : 'smooth'
+        });
+    }
+
+    function showSignup() {
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('signup-container').style.display = 'block';
+    }
+
+    function showLogin() {
+        document.getElementById('signup-container').style.display = 'none';
+        document.getElementById('login-container').style.display = 'block';
+    }
+
+    function canEdit(msg) {
+        return pb.authStore.model.id === msg.user || pb.authStore.model.admin;
+    }
+
+    function canDelete(msg) {
+        return pb.authStore.model.admin;
+    }
+
+    // Initialization
+    if (pb.authStore.isValid) {
+        initChat();
+    }
+</script>
 </body>
 </html>

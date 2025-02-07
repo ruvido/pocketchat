@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --danger-color: #dc3545;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            height: 100vh;
+            font-family: system-ui;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Auth */
+        .auth-form {
+            padding: 2rem;
+            max-width: 400px;
+            margin: auto;
+        }
+        .auth-form input, .auth-form button {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .auth-form button { border: none; }
+        
+        /* Chat */
+        #chat-container { 
+            flex: 1;
+            display: none;
+            position: relative;
+        }
+        #messages {
+            padding: 60px 15px 80px;
+            overflow-y: auto;
+            height: calc(100vh - 60px);
+        }
+        .message {
+            margin: 10px 0;
+            max-width: 70%;
+            padding: 12px 15px;
+            border-radius: 15px;
+            background: #e0e0e0;
+        }
+        .own-message {
+            margin-left: auto;
+            background: var(--primary-color);
+            color: white;
+        }
+        #input-container {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            padding: 15px;
+            background: white;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #ddd;
+        }
+        #message {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+            font-family: inherit;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .primary { background: var(--primary-color); color: white; }
+        .danger { background: var(--danger-color); color: white; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Auth -->
+    <div id="login-container" class="auth-form">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button class="primary" onclick="login()">Login</button>
+        <!-- p style="margin-top:1rem">No account? <button class="danger" onclick="showSignup()">Signup</button></p-->
+        <p style="margin-top:1rem">Non hai ancora un account? <span onclick="showSignup()"><b>Iscriviti</b></span></p>
+    </div>
+
+    <!-- Signup  -->
+    <div id="signup-container" class="auth-form" style="display: none;">
+        <h2>Iscrizione</h2>
+        <input type="text" id="signup-username" placeholder="Username">
+        <input type="email" id="signup-email" placeholder="Email">
+        <input type="password" id="signup-password" placeholder="Password">
+        <input type="password" id="signup-password-confirm" placeholder="Confirm Password">
+        <button class="primary" onclick="signup()">Iscriviti</button>
+        <p style="margin-top:1rem">Hai già un account? <span onclick="showLogin()"><b>Accedi</b></span></p>
+    </div >
+
+    <!-- Chat -->
+    <div id="chat-container">
+        <div style="position:fixed;top:0;width:100%;padding:15px;background:var(--primary-color);color:white;display:flex;justify-content:space-between">
+            <span>User: <span id="username"></span></span>
+            <button class="danger" onclick="logout()">Logout</button>
+        </div>
+        <div id="messages"></div>
+        <div id="input-container">
+            <textarea 
+                id="message" 
+                placeholder="Message..." 
+                onkeydown="handleKeydown(event)"
+                rows="1"
+            ></textarea>
+            <button class="primary" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/pocketbase@0.25.0/dist/pocketbase.umd.js"></script>
+    <script>
+        //const pb = new PocketBase('http://127.0.0.1:8090');
+        const pb = new PocketBase();
+        let unsubscribe;
+
+        // Auth
+        async function login() {
+            try {
+                await pb.collection('users').authWithPassword(
+                    document.getElementById('email').value,
+                    document.getElementById('password').value
+                );
+                localStorage.setItem('pb_auth', pb.authStore.exportToCookie());
+                initChat();
+            } catch(err) {
+                alert('Login failed: ' + err.message);
+            }
+        }
+
+        // Function to create a new user account in the PocketBase "users" collection
+        async function signup() {
+            // Get values from the signup form
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const passwordConfirm = document.getElementById('signup-password-confirm').value;
+
+            // Basic validations
+            if (!username || !email || !password || !passwordConfirm) {
+                return alert("Please fill in all fields.");
+            }
+
+            if (password !== passwordConfirm) {
+                return alert("Passwords do not match.");
+            }
+
+            try {
+                // Create a new user record in the "users" collection in PocketBase
+                await pb.collection('users').create({
+                    username: username,
+                    email: email,
+                    password: password,
+                    passwordConfirm: passwordConfirm
+                });
+                alert("Signup successful! Please login.");
+                // After successful signup, switch back to the login view
+                showLogin();
+            } catch (err) {
+                alert("Signup failed: " + err.message);
+            }
+        }
+
+        function logout() {
+            pb.authStore.clear();
+            localStorage.removeItem('pb_auth');
+            //    if(unsubscribe) unsubscribe();
+
+            // Show login and hide chat
+            document.getElementById('chat-container').style.display = 'none';
+            document.getElementById('login-container').style.display = 'block';
+
+            // Clear form fields
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+        }
+
+
+        // Chat
+        async function initChat() {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'block';
+            document.getElementById('username').textContent = pb.authStore.model.username;
+
+            // Load messages
+            const { items } = await pb.collection('messages').getList(1, 50, {
+                sort: '-created',
+                expand: 'user'
+            });
+            
+            const messages = document.getElementById('messages');
+            messages.innerHTML = '';
+            items.reverse().forEach(msg => addMessage(msg));
+            scrollToBottom(true);
+
+            // Realtime
+            unsubscribe = pb.collection('messages').subscribe('*', async e => {
+                const msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
+                addMessage(msg);
+                scrollToBottom();
+            });
+        }
+
+        function addMessage(msg) {
+            const div = document.createElement('div');
+            div.className = `message ${msg.expand.user.id === pb.authStore.model.id ? 'own-message' : ''}`;
+            div.innerHTML = `
+                <strong>${msg.expand.user.username}</strong>
+                <p>${msg.message.replace(/\n/g, '<br>')}</p>
+                <small>${new Date(msg.created).toLocaleTimeString()}</small>
+            `;
+            document.getElementById('messages').appendChild(div);
+        }
+
+        function handleKeydown(e) {
+            if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const textarea = document.getElementById('message');
+            const message = textarea.value.trim();
+            
+            if(message) {
+                await pb.collection('messages').create({
+                    user: pb.authStore.model.id,
+                    message: message
+                });
+                textarea.value = '';
+                textarea.style.height = 'auto'; // Reset height
+            }
+        }
+
+        function scrollToBottom(instant = false) {
+            const messages = document.getElementById('messages');
+            messages.scrollTo({
+                top: messages.scrollHeight,
+                behavior: instant ? 'auto' : 'smooth'
+            });
+        }
+
+        // Auto-resize textarea
+        document.getElementById('message').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+    // This will trigger the login function when "Enter" is pressed in the email or password fields.
+    document.getElementById('email').addEventListener('keydown', function(e) {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        login();
+      }
+    });
+
+    document.getElementById('password').addEventListener('keydown', function(e) {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        login();
+      }
+    });
+
+
+document.getElementById('signup-container').addEventListener('submit', function(e) {
+  e.preventDefault(); // Prevent the default form submission behavior
+  signup();           // Call your signup function
+});
+
+function showSignup() {
+  // Hide the login container
+  document.getElementById('login-container').style.display = 'none';
+  // Show the signup container
+  document.getElementById('signup-container').style.display = 'block';
+}
+
+// Function to show the login form (and hide the signup form)
+function showLogin() {
+  document.getElementById('signup-container').style.display = 'none';
+  document.getElementById('login-container').style.display = 'block';
+}
+
+        // Init
+        if(localStorage.getItem('pb_auth')) {
+            pb.authStore.loadFromCookie(localStorage.getItem('pb_auth'));
+            if(pb.authStore.isValid) {
+                initChat();
+            } else {
+                document.getElementById('login-container').style.display = 'block';
+            }
+        } else {
+            document.getElementById('login-container').style.display = 'block';
+        }
+//        if(localStorage.getItem('pb_auth')) {
+//            pb.authStore.loadFromCookie(localStorage.getItem('pb_auth'));
+//            initChat();
+//        }
+    </script>
+</body>
+</html>
