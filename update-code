@@ -1,0 +1,1 @@
+rsync -avz pb_public vps:apps/pocketchat/realmen-chat/

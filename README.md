@@ -10,9 +10,13 @@ To modify the chat, edit
     pb_public/index.html
 
 ### next steps
-- [ ] test chat on ipad
+- [!] test chat on ipad
+    - BUG: edit message buttons are not shown
+    - BUG: top bar slips up if pushed
+    - BUG: invalid date
 - [ ] test chat on android
-- [ ] dates do not appear on some devices (instead of date there is "invalid date"
+- [ ] BUG: dates do not appear on some devices (instead of date there is "invalid date"
+- [ ] disable automatic scroll when reading old messages
 - [ ] display day as a row, only times inside messages
 - [ ] when reopening the chat from sleep, go to the last unread message without the need of reloading the page
 - [ ] when opening the chat display the number of unread messages
@@ -26,7 +30,6 @@ To modify the chat, edit
 - [x] remove message input highlight
 - [x] update "a" tag css (visited links, not visited etc.)
 - [-] cleanup svgs
-- [?] automatic scroll disable when reading old messages
 
 ## midterm
 - [ ] open menu from the bottom in mobile screens to save realestate
