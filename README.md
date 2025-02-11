@@ -20,6 +20,8 @@ To modify the chat, edit
 - [ ] display day as a row, only times inside messages
 - [ ] when reopening the chat from sleep, go to the last unread message without the need of reloading the page
 - [ ] when opening the chat display the number of unread messages
+- [ ] generic unique colors for users (username, avatar)
+- [ ] cleanup svgs
 - [x] improved UI (avatars, message menu)
 - [x] dark mode
 - [x] link should render correctly (ie you can click on them)
@@ -29,7 +31,6 @@ To modify the chat, edit
 - [x] add padding at the bottom of the last message (or add padding at the top of the input bar)
 - [x] remove message input highlight
 - [x] update "a" tag css (visited links, not visited etc.)
-- [-] cleanup svgs
 
 ## midterm
 - [ ] open menu from the bottom in mobile screens to save realestate
