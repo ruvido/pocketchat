@@ -72,23 +72,26 @@ function logout() {
     if (unsubscribe) pb.collection('messages').unsubscribe();
     // Show Login
     showAuth();
-
-    //// Show login and hide chat
-    //document.getElementById('chat-container').style.display = 'none';
-    //document.getElementById('login-container').style.display = 'block';
-    //
-    //// Clear form fields
-    //document.getElementById('email').value = '';
-    //document.getElementById('password').value = '';
 }
 
-// Realtime Handling
 function setupRealtime() {
     unsubscribe = pb.collection('messages').subscribe('*', async (e) => {
-        const msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
+        let msg;
+        // If the event is a deletion, avoid fetching the record (which no longer exists)
+        if (e.action === 'delete') {
+            msg = { id: e.record.id };
+        } else {
+            try {
+                msg = await pb.collection('messages').getOne(e.record.id, { expand: 'user' });
+            } catch (err) {
+                console.error('Error fetching message:', err);
+                return;
+            }
+        }
         handleMessage(msg, e.action);
     });
 }
+
 
 function handleMessage(msg, action) {
     const container = document.getElementById('messages');
@@ -102,7 +105,13 @@ function handleMessage(msg, action) {
             if (existing) existing.replaceWith(createMessageElement(msg));
             break;
         case 'delete':
-            document.querySelector(`[data-id="${msg.id}"]`)?.remove();
+            const messageEl = document.querySelector(`[data-id="${msg.id}"]`);
+            if (messageEl) {
+                messageEl.innerHTML = `
+                    <div class="message-deleted">Message deleted</div>
+                `;
+            }
+            //document.querySelector(`[data-id="${msg.id}"]`)?.remove();
             break;
     }
     scrollToBottom();
@@ -122,15 +131,6 @@ async function sendMessage() {
     }
 }
 
-
-// Add these SVG icons for message actions
-const actionIcons = {
-    reply: `<svg viewBox="0 0 24 24"><path d="M10,9V5L3,12L10,19V14.9C15,14.9 18.5,16.5 21,20C20,15 17,10 10,9Z"/></svg>`,
-    edit: `<svg viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>`,
-    delete: `<svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>`
-};
-
-
 function createMessageElement(msg) {
     const div = document.createElement('div');
     const isOwnMessage = msg.expand.user.id === pb.authStore.model.id;
@@ -138,8 +138,6 @@ function createMessageElement(msg) {
     div.className = `message ${isOwnMessage ? 'own' : ''}`;
     div.dataset.id = msg.id;
     const bgColor = getUniqueColor(msg.expand.user.username);
-
-
 
     div.innerHTML = `
     <div class="message-avatar">${getInitials(msg.expand.user.username)}</div>
@@ -150,20 +148,20 @@ function createMessageElement(msg) {
         <span>${formatDate(msg.created)}</span>
       </div>
     </div>
-<div class="message-menu">
-  <div class="message-reaction">
-    <i class="hidden message-menu-icon" data-feather="heart"></i>
-  </div>
-  <div class="message-reply">
-    <i class="hidden message-menu-icon" data-feather="corner-up-left"></i>
-  </div>
-  <div class="message-edit">
-    <i class="message-menu-icon" data-feather="edit-2"></i>
-  </div>
-  <div class="message-delete icon-alert">
-    <i class="message-menu-icon" data-feather="trash"></i>
-  </div>
-</div>
+    <div class="message-menu">
+      <div class="message-reaction">
+        <i class="hidden message-menu-icon" data-feather="heart"></i>
+      </div>
+      <div class="message-reply">
+        <i class="hidden message-menu-icon" data-feather="corner-up-left"></i>
+      </div>
+      <div class="message-edit">
+        <i class="message-menu-icon" data-feather="edit-2"></i>
+      </div>
+      <div class="message-delete icon-alert">
+        <i class="message-menu-icon" data-feather="trash"></i>
+      </div>
+    </div>
   `;
 
     // For own messages, hide the username/avatar; for others, hide edit/delete
@@ -179,24 +177,21 @@ function createMessageElement(msg) {
         if (messageDelete) messageDelete.style.display = 'none';
     }
 
-    // Attach click event listeners using relative selectors
+    // Attach event listeners to the parent divs instead of icons
+    const editButton = div.querySelector('.message-edit');
+    const deleteButton = div.querySelector('.message-delete');
 
-    const editIcon = div.querySelector('.message-edit');
-    const deleteIcon = div.querySelector('.message-delete');
-
-    if (editIcon) {
-        editIcon.addEventListener('click', function(event) {
+    if (editButton) {
+        editButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            //editMessage(msg.id);
-            console.log("edit")
+            editMessage(msg.id);
         });
     }
 
-    if (deleteIcon) {
-        deleteIcon.addEventListener('click', function(event) {
+    if (deleteButton) {
+        deleteButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            //deleteMessage(msg.id);
-            console.log("delete")
+            deleteMessage(msg.id);
         });
     }
 
@@ -215,80 +210,13 @@ async function editMessage(messageId) {
 
 async function deleteMessage(messageId) {
   if (confirm('Are you sure you want to delete this message?')) {
-    await pb.collection('messages').delete(messageId);
+    try {
+      await pb.collection('messages').delete(messageId);
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
   }
 }
-
-
-//function createMessageElement(msg) {
-//    const div = document.createElement('div');
-//    const isOwnMessage = msg.expand.user.id === pb.authStore.model.id;
-//    div.className = `message ${isOwnMessage ? 'own' : ''}`;
-//    //div.className = `message ${msg.expand.user.id === pb.authStore.model.id ? 'own' : ''}`;
-//    div.dataset.id = msg.id;
-//    const bgColor = getUniqueColor(msg.expand.user.username);
-//
-//    div.innerHTML = `
-//            <div id="message-avatar">${getInitials(msg.expand.user.username)}</div>
-//            <div class="message-content">
-//                <div id="message-username">${msg.expand.user.username}</div>
-//                <div>${linkify(msg.message)}</div>
-//                <div class="message-info">
-//                    <span>${formatDate(msg.created)}</span>
-//                </div>
-//            </div>
-//            <div id="message-menu">
-//                <i id="message-reaction" class="message-menu-icon hidden" data-feather="heart"></i>
-//                <i id="message-reply"    class="message-menu-icon hidden" data-feather="corner-up-left"></i>
-//                <i id="message-edit"     class="message-menu-icon" data-feather="edit-2"></i>
-//                <i id="message-delete"   class="message-menu-icon icon-alert" data-feather="trash"></i>
-//            </div>
-//    `;
-//    // If the message is owned by the current user, hide the username element
-//    // replace the avatar with a 3-dots menu icon
-//    if (isOwnMessage) {
-//        const avatarEl = div.querySelector('#message-avatar');
-//        const usernameEl = div.querySelector('#message-username');
-//        if (usernameEl) usernameEl.style.display = 'none';
-//        if (avatarEl) avatarEl.style.display = 'none';
-//    } else {
-//        const messageEdit   = div.querySelector('#message-edit');
-//        const messageDelete = div.querySelector('#message-delete');
-//        if (messageEdit) messageEdit.style.display = 'none';
-//        if (messageDelete) messageDelete.style.display = 'none';
-//    }
-//    // Interactions with messages
-//    const reactionIcon  = document.getElementById('message-reaction');
-//    const replyIcon     = document.getElementById('message-reply');
-//    const editIcon      = document.getElementById('message-edit');
-//    const deleteIcon    = document.getElementById('message-delete');
-//    // Attach click event listeners to each icon
-//    if (editIcon) {
-//        editIcon.addEventListener('click', function() {
-//            console.log('edit');
-//        });
-//    }
-//    if (deleteIcon) {
-//        deleteIcon.addEventListener('click', function() {
-//            console.log('delete');
-//        });
-//    }
-//        //if (avatarEl) {
-//        //    avatarEl.innerHTML = '…';
-//        //    avatarEl.classList.add('message-menu-icon');
-//        //
-//        //    // (Optional) Add a click handler to trigger your menu
-//        //    avatarEl.addEventListener('click', function() {
-//        //        // Open your menu here. For example:
-//        //        // showMessageMenu(msg.id);
-//        //        console.log("Menu clicked for message", msg.id);
-//        //    });
-//        //}
-//                //${canEdit(msg) ? `<button style="width: 18px;" onclick="editMessage('${msg.id}')">${actionIcons.edit}</button>` : ''}
-//                //${canDelete(msg) ? `<button style="width: 18px;" onclick="deleteMessage('${msg.id}')">${actionIcons.delete}</button>` : ''}
-//
-//    return div;
-//}
 
 // UI Helpers
 function showChat() {
